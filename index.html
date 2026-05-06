@@ -544,7 +544,7 @@ function renderSidebar() {
     const t=getTasks(p.id),d=t.filter(x=>x.done).length;
     return `<div class="proj-item ${G.view===p.id?'active':''}" onclick="setView('${p.id}')">
       <div class="proj-dot" style="background:${p.color}"></div>
-      <span class="proj-name">${esc(p.name)}</span>
+      <span class="proj-name" ${own?`ondblclick="event.stopPropagation();renameProj('${p.id}',this)" title="Двойной клик — переименовать"`:''}>${esc(p.name)}</span>
       <span class="proj-count">${d}/${t.length}</span>
       ${own?`<button class="proj-del" onclick="event.stopPropagation();delProj('${p.id}')">×</button>`:''}
     </div>`;
@@ -720,6 +720,29 @@ function setAssignee(pid,tid,memberId) {
 // Actions
 function switchUser(i) { G.activeUser=i; G.view='overview'; G.filter='all'; G.filterAssignee='all'; closeMob(); save(); render(); }
 function setView(v) { G.view=v; G.filter='all'; G.filterAssignee='all'; closeMob(); save(); render(); }
+
+function renameProj(pid, el) {
+  const proj = getProjects().find(p=>p.id===pid);
+  if(!proj) return;
+  const old = proj.name;
+  el.contentEditable = 'true';
+  el.focus();
+  // select all text
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+  el.onblur = () => {
+    el.contentEditable = 'false';
+    const newName = el.textContent.trim();
+    if(newName && newName !== old) { proj.name = newName; save(); render(); }
+    else { el.textContent = old; }
+  };
+  el.onkeydown = (e) => {
+    if(e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    if(e.key === 'Escape') { el.textContent = old; el.blur(); }
+  };
+}
 function setFilter(f) { G.filter=f; render(); }
 function setFilterAssignee(id) { G.filterAssignee=id; render(); }
 
