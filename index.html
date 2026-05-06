@@ -230,6 +230,22 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 .btn-cancel:hover { background: var(--surface2); }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
+.proj-menu-btn { background:transparent;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;opacity:0;transition:opacity 0.15s;line-height:1;flex-shrink:0 }
+.proj-item:hover .proj-menu-btn { opacity:1 }
+.proj-menu-btn:hover { color:var(--text) }
+.proj-menu { position:fixed;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:200;padding:4px;min-width:160px }
+.proj-menu-item { display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text);transition:background 0.12s }
+.proj-menu-item:hover { background:var(--surface2) }
+.proj-menu-item.danger { color:var(--p1) }
+.proj-menu-sep { height:1px;background:var(--border);margin:3px 0 }
+.color-picker-row { display:flex;gap:5px;flex-wrap:wrap;padding:6px 10px }
+.cp-swatch { width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform 0.12s }
+.cp-swatch:hover { transform:scale(1.2) }
+.cp-swatch.active { border-color:var(--text) }
+.proj-item[draggable=true] { cursor:grab }
+.proj-item.drag-over { border-top:2px solid var(--text) }
+.proj-card[draggable=true] { cursor:grab }
+.proj-card.drag-over { outline:2px solid var(--text);outline-offset:2px }
 .team-mgr-row { display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface2);border-radius:var(--radius) }
 .team-mgr-av { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0 }
 .team-mgr-name { flex:1;font-size:13px;color:var(--text) }
@@ -542,11 +558,13 @@ function renderSidebar() {
   </div><div style="height:6px"></div>`;
   html+=projs.map(p=>{
     const t=getTasks(p.id),d=t.filter(x=>x.done).length;
-    return `<div class="proj-item ${G.view===p.id?'active':''}" onclick="setView('${p.id}')">
+    return `<div class="proj-item ${G.view===p.id?'active':''}" onclick="setView('${p.id}')"
+      ${own?`draggable="true" ondragstart="dragStart(event,'${p.id}')" ondragover="dragOver(event,'${p.id}','sidebar')" ondrop="dragDrop(event,'${p.id}','sidebar')" ondragleave="dragLeave(event)"`:''}
+      id="si-${p.id}">
       <div class="proj-dot" style="background:${p.color}"></div>
-      <span class="proj-name" ${own?`ondblclick="event.stopPropagation();renameProj('${p.id}')" title="Двойной клик — переименовать"`:''}>${esc(p.name)}</span>
+      <span class="proj-name">${esc(p.name)}</span>
       <span class="proj-count">${d}/${t.length}</span>
-      ${own?`<button class="proj-del" onclick="event.stopPropagation();delProj('${p.id}')">×</button>`:''}
+      ${own?`<button class="proj-menu-btn" onclick="event.stopPropagation();openProjMenu('${p.id}',this)">⋯</button>`:''}
     </div>`;
   }).join('');
   if(!own) html+=`<div class="readonly-banner">👀 просмотр</div>`;
@@ -593,7 +611,7 @@ function renderOverview(main) {
     const tasks=getTasks(p.id),done=tasks.filter(t=>t.done).length,total=tasks.length,pct=total?Math.round(done/total*100):0;
     const sorted=[...tasks].sort((a,b)=>(a.done!==b.done?a.done?1:-1:0)||(PRIO_O[a.prio]-PRIO_O[b.prio]));
     const prev=sorted.slice(0,5),more=sorted.length-prev.length;
-    return `<div class="proj-card ${own?'':'ro'}" ${own?`onclick="setView('${p.id}')"`:''}>
+    return `<div class="proj-card ${own?'':'ro'}" ${own?`onclick="setView('${p.id}')" draggable="true" ondragstart="dragStart(event,'${p.id}')" ondragover="dragOver(event,'${p.id}','overview')" ondrop="dragDrop(event,'${p.id}','overview')" ondragleave="dragLeave(event)" id="ov-${p.id}"`:''}> `
       <div class="card-header">
         <div class="card-dot" style="background:${p.color}"></div>
         <span class="card-title">${esc(p.name)}</span>
@@ -722,6 +740,7 @@ function switchUser(i) { G.activeUser=i; G.view='overview'; G.filter='all'; G.fi
 function setView(v) { G.view=v; G.filter='all'; G.filterAssignee='all'; closeMob(); save(); render(); }
 
 function renameProj(pid) {
+  closeProjMenu();
   const proj = getProjects().find(p=>p.id===pid);
   if(!proj) return;
   const newName = prompt('Переименовать проект:', proj.name);
@@ -729,6 +748,74 @@ function renameProj(pid) {
     proj.name = newName.trim();
     save(); render();
   }
+}
+
+// Project context menu
+let projMenuOpen = null;
+function openProjMenu(pid, btn) {
+  closeProjMenu();
+  const proj = getProjects().find(p=>p.id===pid);
+  if(!proj) return;
+  projMenuOpen = pid;
+
+  const menu = document.createElement('div');
+  menu.className = 'proj-menu';
+  menu.id = 'projMenu';
+
+  const colorSwatches = COLORS.map(c=>`<div class="cp-swatch ${c===proj.color?'active':''}" style="background:${c}" onclick="setProjColor('${pid}','${c}')"></div>`).join('');
+
+  menu.innerHTML = `
+    <div class="proj-menu-item" onclick="renameProj('${pid}')">✏️ Переименовать</div>
+    <div class="proj-menu-sep"></div>
+    <div style="padding:4px 10px 2px;font-size:11px;color:var(--text3)">Цвет</div>
+    <div class="color-picker-row">${colorSwatches}</div>
+    <div class="proj-menu-sep"></div>
+    <div class="proj-menu-item danger" onclick="delProjFromMenu('${pid}')">🗑 Удалить проект</div>
+  `;
+
+  const rect = btn.getBoundingClientRect();
+  menu.style.cssText = `top:${rect.bottom+4}px;left:${Math.min(rect.left,window.innerWidth-180)}px`;
+  document.body.appendChild(menu);
+  setTimeout(()=>document.addEventListener('click', closeProjMenu, {once:true}), 10);
+}
+
+function closeProjMenu() {
+  const m = document.getElementById('projMenu');
+  if(m) m.remove();
+  projMenuOpen = null;
+}
+
+function setProjColor(pid, color) {
+  const proj = getProjects().find(p=>p.id===pid);
+  if(proj) { proj.color = color; save(); render(); }
+  closeProjMenu();
+}
+
+function delProjFromMenu(pid) {
+  closeProjMenu();
+  delProj(pid);
+}
+
+// Drag & drop
+let dragId = null;
+function dragStart(e, pid) { dragId = pid; e.dataTransfer.effectAllowed='move'; }
+function dragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function dragOver(e, pid, zone) {
+  e.preventDefault();
+  if(dragId === pid) return;
+  e.currentTarget.classList.add('drag-over');
+}
+function dragDrop(e, pid, zone) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!dragId || dragId === pid) return;
+  const projs = getProjects();
+  const fromIdx = projs.findIndex(p=>p.id===dragId);
+  const toIdx = projs.findIndex(p=>p.id===pid);
+  if(fromIdx===-1||toIdx===-1) return;
+  projs.splice(toIdx, 0, projs.splice(fromIdx, 1)[0]);
+  dragId = null;
+  save(); render();
 }
 function setFilter(f) { G.filter=f; render(); }
 function setFilterAssignee(id) { G.filterAssignee=id; render(); }
