@@ -169,8 +169,8 @@ input, select, button, textarea { font-family: var(--font); }
 .main { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
 
 /* ── Overview grid ── */
-.overview { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; padding: 16px; overflow-y: auto; flex: 1; }
-.proj-card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden; min-height: 180px; cursor: pointer; transition: box-shadow 0.2s, transform 0.2s; border: 0.5px solid var(--border); }
+.overview { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); grid-auto-rows: minmax(200px, auto); gap: 14px; padding: 16px; overflow-y: auto; flex: 1; align-content: start; }
+.proj-card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden; min-height: 180px; cursor: pointer; transition: box-shadow 0.2s, transform 0.2s; border: 0.5px solid var(--border); height: 100%; }
 .proj-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.1); transform: translateY(-2px); }
 .proj-card.ro { cursor: default; }
 .proj-card.ro:hover { box-shadow: var(--shadow-lg); transform: none; }
@@ -926,8 +926,7 @@ function renderOverview(main) {
     const tasks=getTasks(p.id),done=tasks.filter(t=>t.done).length,total=tasks.length,pct=total?Math.round(done/total*100):0;
     const sorted=[...tasks].sort((a,b)=>(a.done!==b.done?a.done?1:-1:0)||(PRIO_O[a.prio]-PRIO_O[b.prio]));
     const prev=sorted.slice(0,5),more=sorted.length-prev.length;
-    const dragAttrs = own ? `draggable="true" ondragstart="dragStart(event,'${p.id}')" ondragover="dragOver(event,'${p.id}','overview')" ondrop="dragDrop(event,'${p.id}','overview')" ondragleave="dragLeave(event)" id="ov-${p.id}"` : '';
-    return `<div class="proj-card ${own?'':'ro'}" ${dragAttrs} ${own?`onclick="setView('${p.id}')"`:''}>
+    return `<div class="proj-card ${own?'':'ro'}" ${own?`onclick="setView('${p.id}')"`:''}>
       <div class="card-header">
         <div class="card-dot" style="background:${p.color}"></div>
         <span class="card-title">${esc(p.name)}</span>
@@ -1233,14 +1232,17 @@ function setFilterAssignee(id) { G.filterAssignee=id; render(); }
 
 function addTask(pid) {
   if(!isOwn()) return;
-  const inp=document.getElementById('taskIn'),prio=document.getElementById('prioSel').value;
-  const assigneeId=document.getElementById('assigneeSel').value||null;
-  const day=document.getElementById('daySel')?.value||'';
-  const text=inp.value.trim(); if(!text) return;
-  const taskList = getTasksForProject(pid);
-  taskList.push({id:uid(),text,prio,done:false,assigneeId,day,status:'new',note:''});
+  const inp = document.getElementById('taskIn');
+  const prioEl = document.getElementById('prioSel');
+  const assigneeEl = document.getElementById('assigneeSel');
+  if(!inp) return;
+  const text = inp.value.trim();
+  if(!text) return;
+  const prio = prioEl ? prioEl.value : 'p2';
+  const assigneeId = assigneeEl ? (assigneeEl.value || null) : null;
+  getTasks(pid).push({id:uid(), text, prio, done:false, assigneeId, sectionId:null, rolledOver:false});
   inp.value=''; save(); render();
-  setTimeout(()=>{const el=document.getElementById('taskIn');if(el)el.focus();},30);
+  setTimeout(()=>{ const el=document.getElementById('taskIn'); if(el) el.focus(); }, 30);
 }
 function addTaskInline(pid, sectionId, inputId) {
   if(!isOwn()) return;
