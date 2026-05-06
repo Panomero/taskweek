@@ -813,9 +813,16 @@ function renderMain() {
   const taskInEl = document.getElementById('taskIn');
   const savedTaskIn = taskInEl ? taskInEl.value : '';
   const main=document.getElementById('main');
-  if(G.view==='overview') renderOverview(main);
-  else if(G.view==='inbox') renderInbox(main);
-  else { const p=getProjects().find(x=>x.id===G.view); p?renderProjView(main,p):(G.view='overview',renderOverview(main)); }
+  if(!main) return;
+  try {
+    if(G.view==='overview') renderOverview(main);
+    else if(G.view==='inbox') renderInbox(main);
+    else { const p=getProjects().find(x=>x.id===G.view); p?renderProjView(main,p):(G.view='overview',renderOverview(main)); }
+  } catch(e) {
+    console.error('renderMain error:', e);
+    G.view='overview';
+    try { renderOverview(main); } catch(e2) { main.innerHTML='<div style="padding:20px;color:red">Ошибка рендера: '+e.message+'</div>'; }
+  }
   if(savedTaskIn) {
     const newTaskIn = document.getElementById('taskIn');
     if(newTaskIn) newTaskIn.value = savedTaskIn;
@@ -1350,7 +1357,7 @@ function renameTask(pid, tid, el) {
 function toggleTask(pid,tid) {
   const tasks = getTasksForProject(pid);
   const t=tasks.find(x=>x.id===tid);
-  if(t){t.done=!t.done;if(t.done){t.rolledOver=false;t.status='done_s';}else{t.status='new';}save();render();}
+  if(t){t.done=!t.done;if(t.done)t.rolledOver=false;save();render();}
 }
 function delTask(pid,tid) {
   if(!isOwn()) return;
@@ -1527,69 +1534,14 @@ function delTeamMember(i) {
 const tmo=document.getElementById('teamModalOverlay'); if(tmo) tmo.addEventListener('click',function(e){if(e.target===this)closeTeamModal();});
 
 // Day picker
-function openDayPicker(pid,tid,el) {
-  document.querySelectorAll('.day-picker,.status-picker,.note-popup').forEach(p=>p.remove());
-  const tasks=getTasksForProject(pid), t=tasks.find(x=>x.id===tid); if(!t) return;
-  const picker=document.createElement('div'); picker.className='day-picker';
-  picker.innerHTML=['','Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((d,i)=>
-    `<div class="day-picker-item" onclick="setDay('${pid}','${tid}',${i})">${i===0?'— без дня':d}</div>`
-  ).join('');
-  const rect=el.getBoundingClientRect();
-  picker.style.cssText=`top:${rect.bottom+4}px;left:${rect.left}px`;
-  document.body.appendChild(picker);
-  setTimeout(()=>document.addEventListener('click',()=>picker.remove(),{once:true}),10);
-}
-function setDay(pid,tid,day) {
-  const t=getTasksForProject(pid).find(x=>x.id===tid);
-  if(t){t.day=day||'';save();render();}
-  document.querySelectorAll('.day-picker').forEach(p=>p.remove());
-}
 
-// Status picker
-function openStatusPicker(pid,tid,el) {
-  document.querySelectorAll('.day-picker,.status-picker,.note-popup').forEach(p=>p.remove());
-  const tasks=getTasksForProject(pid), t=tasks.find(x=>x.id===tid); if(!t) return;
-  const picker=document.createElement('div'); picker.className='status-picker';
-  picker.innerHTML=Object.entries(STATUS).map(([k,v])=>
-    `<div class="status-picker-item" onclick="setStatus('${pid}','${tid}','${k}')" style="color:${STATUS_C[k]}">${v}</div>`
-  ).join('');
-  const rect=el.getBoundingClientRect();
-  picker.style.cssText=`top:${rect.bottom+4}px;left:${rect.left}px`;
-  document.body.appendChild(picker);
-  setTimeout(()=>document.addEventListener('click',()=>picker.remove(),{once:true}),10);
-}
-function setStatus(pid,tid,status) {
-  const t=getTasksForProject(pid).find(x=>x.id===tid);
-  if(t){t.status=status;if(status==='done_s')t.done=true;else t.done=false;save();render();}
-  document.querySelectorAll('.status-picker').forEach(p=>p.remove());
-}
 
-// Note popup
-function openNote(pid,tid,el) {
-  document.querySelectorAll('.day-picker,.status-picker,.note-popup').forEach(p=>p.remove());
-  const t=getTasksForProject(pid).find(x=>x.id===tid); if(!t) return;
-  const popup=document.createElement('div'); popup.className='note-popup';
-  popup.innerHTML=`<textarea id="noteTA" placeholder="Заметка к задаче...">${esc(t.note||'')}</textarea>
-    <div class="note-popup-btns">
-      <button class="btn-cancel" onclick="document.querySelectorAll('.note-popup').forEach(p=>p.remove())">Отмена</button>
-      <button class="add-btn" onclick="saveNote('${pid}','${tid}')">Сохранить</button>
-    </div>`;
-  const rect=el.getBoundingClientRect();
-  popup.style.cssText=`top:${rect.bottom+4}px;left:${Math.min(rect.left,window.innerWidth-270)}px`;
-  document.body.appendChild(popup);
-  setTimeout(()=>document.getElementById('noteTA')?.focus(),30);
-}
-function saveNote(pid,tid) {
-  const t=getTasksForProject(pid).find(x=>x.id===tid);
-  const ta=document.getElementById('noteTA');
-  if(t&&ta){t.note=ta.value.trim();save();render();}
-  document.querySelectorAll('.note-popup').forEach(p=>p.remove());
-}
 
-// Task drag & drop
 
-function taskDragOver2(e,pid,tid){e.preventDefault();if(taskDragId===tid)return;e.currentTarget.classList.add('drag-task-over');}
-function taskDragLeave2(e){e.currentTarget.classList.remove('drag-task-over');}
+
+
+
+
 function taskDrop(e,pid,tid){
   e.preventDefault();e.currentTarget.classList.remove('drag-task-over');
   if(!taskDragId||taskDragId===tid||taskDragPid!==pid)return;
