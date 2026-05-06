@@ -246,6 +246,26 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 .proj-item.drag-over { border-top:2px solid var(--text) }
 .proj-card[draggable=true] { cursor:grab }
 .proj-card.drag-over { outline:2px solid var(--text);outline-offset:2px }
+.day-tag { font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:8px;flex-shrink:0;background:var(--surface2);color:var(--text2);cursor:pointer }
+.day-tag:hover { background:var(--border2) }
+.status-tag { font-size:10px;font-family:var(--mono);font-weight:500;padding:2px 8px;border-radius:8px;flex-shrink:0;cursor:pointer }
+.note-btn { background:transparent;border:none;cursor:pointer;font-size:13px;padding:0 2px;opacity:0;transition:opacity 0.15s;flex-shrink:0 }
+.task-row:hover .note-btn { opacity:1 }
+.note-btn.has-note { opacity:0.6 }
+.task-note { font-size:11px;color:var(--text3);padding:2px 0 0 30px;font-style:italic;white-space:pre-wrap;word-break:break-word }
+.note-popup { position:fixed;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:50;padding:10px;width:260px }
+.note-popup textarea { width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px;font-size:12px;font-family:var(--font);color:var(--text);outline:none;resize:vertical;min-height:80px }
+.note-popup-btns { display:flex;gap:6px;justify-content:flex-end;margin-top:8px }
+.shared-badge { font-size:10px;font-family:var(--mono);padding:2px 6px;border-radius:8px;background:var(--surface2);color:var(--text3);flex-shrink:0 }
+.task-row.drag-task-over { border-top:2px solid var(--text) }
+.day-picker,.status-picker { position:fixed;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:50;padding:4px;min-width:110px }
+.day-picker-item,.status-picker-item { padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--mono);color:var(--text);transition:background 0.12s }
+.day-picker-item:hover,.status-picker-item:hover { background:var(--surface2) }
+.workload-bar { display:flex;flex-direction:column;gap:4px;padding:4px 2px }
+.workload-row { display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2) }
+.workload-av { width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:#fff;flex-shrink:0 }
+.workload-name { flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+.workload-count { font-family:var(--mono);font-size:10px;color:var(--text3) }
 .team-mgr-row { display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface2);border-radius:var(--radius) }
 .team-mgr-av { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0 }
 .team-mgr-name { flex:1;font-size:13px;color:var(--text) }
@@ -336,6 +356,10 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
     <h3>Новый проект</h3>
     <input type="text" id="modalInput" placeholder="Название..." onkeydown="if(event.key==='Enter')saveProject()">
     <div class="color-row" id="colorRow"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:14px;cursor:pointer">
+      <input type="checkbox" id="sharedCheck" style="width:16px;height:16px;accent-color:var(--text)">
+      Общий проект (виден всем пользователям)
+    </label>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
       <button class="add-btn" onclick="saveProject()">Создать</button>
@@ -346,6 +370,9 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 <script>
 const COLORS = ['#7C6FF7','#2ECC99','#E05C5C','#F0A500','#3A9BD5','#E879A0','#52C28C','#FF7043','#AB8DF7','#4ECDC4','#26C6DA','#66BB6A'];
 const PRIO = {p1:'Высокий',p2:'Средний',p3:'Низкий',p4:'—'};
+const DAYS = ['','Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const STATUS = {new:'Новая',inprog:'В работе',review:'На проверке',done_s:'Готово'};
+const STATUS_C = {new:'#A8A59E',inprog:'#3A9BD5',review:'#D68910',done_s:'#1E8449'};
 const PRIO_C = {p1:'#C0392B',p2:'#D68910',p3:'#1E8449',p4:'#aaa'};
 const PRIO_O = {p1:0,p2:1,p3:2,p4:3};
 
@@ -389,9 +416,9 @@ buildSetupUI();
 // Global state
 let G = {
   users: [], teams: {}, activeUser: 0,
-  projects: {}, tasks: {},
+  projects: {}, tasks: {}, sharedProjects: [], sharedTasks: {},
   view:'overview', currentWeek:0, filter:'all', filterAssignee:'all',
-  theme:'light', focus:false, selColor:COLORS[0]
+  theme:'light', focus:false, selColor:COLORS[0], shareNew:false
 };
 let saveT;
 let pickerOpenId = null;
@@ -424,6 +451,8 @@ async function load() {
     if(val) {
       Object.assign(G, JSON.parse(val));
       if(!G.teams) { G.teams={}; G.users.forEach(u=>{ G.teams[u.id]=G.team||[]; }); }
+      if(!G.sharedProjects) G.sharedProjects=[];
+      if(!G.sharedTasks) G.sharedTasks={};
       G.users.forEach(u=>{ if(!G.teams[u.id]) G.teams[u.id]=[]; });
       if(!G.filterAssignee) G.filterAssignee='all';
       rolloverTasks();
@@ -507,7 +536,28 @@ function changeWeek(d) { G.currentWeek+=d; save(); render(); }
 
 function auid() { return G.users[G.activeUser]?.id; }
 function isOwn() { return G.activeUser===0; }
-function getProjects() { const u=auid(); if(!G.projects[u]) G.projects[u]=[]; return G.projects[u]; }
+function getProjects() {
+  const u=auid();
+  if(!G.projects[u]) G.projects[u]=[];
+  return G.projects[u];
+}
+function getAllProjects() {
+  // own + shared combined for overview
+  const own = getProjects();
+  const shared = (G.sharedProjects||[]).filter(p=>!own.find(o=>o.id===p.id));
+  return [...own, ...shared.map(p=>({...p,_shared:true}))];
+}
+function getTasksForProject(pid) {
+  // Check if shared project
+  const isShared = (G.sharedProjects||[]).find(p=>p.id===pid);
+  if(isShared) {
+    const wk=getWeekKey(G.currentWeek);
+    if(!G.sharedTasks[pid]) G.sharedTasks[pid]={};
+    if(!G.sharedTasks[pid][wk]) G.sharedTasks[pid][wk]=[];
+    return G.sharedTasks[pid][wk];
+  }
+  return getTasks(pid);
+}
 function getTasks(pid) {
   const u=auid(),wk=getWeekKey(G.currentWeek);
   if(!G.tasks[u]) G.tasks[u]={};
@@ -582,20 +632,7 @@ function renderSidebar() {
       <span class="mini-stat"><strong>${tot}</strong> всего</span>
     </div>`;
 
-  // Team panel
-  const allMembers=getAllMembers();
-  if(allMembers.length) {
-    document.getElementById('teamPanel').innerHTML=`
-      <div class="team-panel-title">Команда</div>
-      <div class="team-avatars">${allMembers.map(m=>`
-        <div class="team-av" style="background:${m.color}">
-          ${memberInitials(m)}
-          <div class="team-av-tip">${esc(m.name)}</div>
-        </div>`).join('')}
-      </div>`;
-  } else {
-    document.getElementById('teamPanel').innerHTML='';
-  }
+  renderWorkload();
 }
 
 function renderMain() {
@@ -605,13 +642,14 @@ function renderMain() {
 }
 
 function renderOverview(main) {
-  const projs=getProjects(),own=isOwn();
+    const projs=getProjects(); const own=isOwn();
   if(!projs.length){main.innerHTML=`<div class="overview"><div class="empty-state"><div class="empty-icon">📂</div>Нет проектов</div></div>`;return;}
   const cards=projs.map(p=>{
     const tasks=getTasks(p.id),done=tasks.filter(t=>t.done).length,total=tasks.length,pct=total?Math.round(done/total*100):0;
     const sorted=[...tasks].sort((a,b)=>(a.done!==b.done?a.done?1:-1:0)||(PRIO_O[a.prio]-PRIO_O[b.prio]));
     const prev=sorted.slice(0,5),more=sorted.length-prev.length;
-    return `<div class="proj-card ${own?'':'ro'}" ${own?`onclick="setView('${p.id}')" draggable="true" ondragstart="dragStart(event,'${p.id}')" ondragover="dragOver(event,'${p.id}','overview')" ondrop="dragDrop(event,'${p.id}','overview')" ondragleave="dragLeave(event)" id="ov-${p.id}"`:''}> `
+    const dragAttrs = own ? `draggable="true" ondragstart="dragStart(event,'${p.id}')" ondragover="dragOver(event,'${p.id}','overview')" ondrop="dragDrop(event,'${p.id}','overview')" ondragleave="dragLeave(event)" id="ov-${p.id}"` : '';
+    return `<div class="proj-card ${own?'':'ro'}" ${dragAttrs} ${own?`onclick="setView('${p.id}')"`:''}>
       <div class="card-header">
         <div class="card-dot" style="background:${p.color}"></div>
         <span class="card-title">${esc(p.name)}</span>
@@ -650,22 +688,32 @@ function renderProjView(main,proj) {
     if(G.filterAssignee==='none') filtered=filtered.filter(t=>!t.assigneeId);
     else filtered=filtered.filter(t=>t.assigneeId===G.filterAssignee);
   }
-  filtered.sort((a,b)=>(a.done!==b.done?a.done?1:-1:0)||(PRIO_O[a.prio]-PRIO_O[b.prio]));
+  filtered.sort((a,b)=>(a.done!==b.done?a.done?1:-1:0)||((a.day||99)-(b.day||99))||(PRIO_O[a.prio]-PRIO_O[b.prio]));
 
   const taskHTML=filtered.length?filtered.map(t=>{
     const m=t.assigneeId?getMember(t.assigneeId):null;
-    return `<div class="task-row ${t.done?'done':''}" style="position:relative">
-      <div class="check ${t.done?'checked':''} ${own?'':'dis'}" ${own?`onclick="toggleTask('${proj.id}','${t.id}')"`:''}></div>
-      <span class="task-txt">${esc(t.text)}</span>
-      ${t.rolledOver&&!t.done?`<span class="rolled-tag" title="Перенесено с прошлой недели">↩</span>`:''}
+    const dayLabel = t.day?DAYS[t.day]:'';
+    const taskStatus = t.status||'new';
+    return `<div class="task-row ${t.done?'done':''}" style="position:relative"
+      draggable="${own?'true':'false'}"
+      ondragstart="taskDragStart(event,'${proj.id}','${t.id}')"
+      ondragover="taskDragOver2(event,'${proj.id}','${t.id}')"
+      ondragleave="taskDragLeave2(event)"
+      ondrop="taskDrop(event,'${proj.id}','${t.id}')">
+      <div class="check ${t.done?'checked':''}" onclick="toggleTask('${proj.id}','${t.id}')"></div>
+      <div style="flex:1;min-width:0">
+        <span class="task-txt">${esc(t.text)}</span>
+        ${t.note?`<div class="task-note">${esc(t.note)}</div>`:''}
+      </div>
+      ${t.rolledOver&&!t.done?`<span class="rolled-tag">↩</span>`:''}
+      ${dayLabel?`<span class="day-tag" onclick="event.stopPropagation();openDayPicker('${proj.id}','${t.id}',this)">${dayLabel}</span>`:''}
+      ${own?`<span class="day-tag" onclick="event.stopPropagation();openDayPicker('${proj.id}','${t.id}',this)" style="${dayLabel?'display:none':''}" title="День недели">📅</span>`:''}
+      <span class="status-tag" style="background:${STATUS_C[taskStatus]}22;color:${STATUS_C[taskStatus]}" onclick="event.stopPropagation();openStatusPicker('${proj.id}','${t.id}',this)">${STATUS[taskStatus]}</span>
       ${own?`<div class="assignee-badge" onclick="event.stopPropagation();openPicker('${proj.id}','${t.id}',this)">
-        ${m
-          ?`<div class="assignee-av" style="background:${m.color}" title="${esc(m.name)}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span>`
-          :`<span class="no-assignee">+ исполнитель</span>`}
-      </div>`
-      :(m?`<div class="assignee-badge"><div class="assignee-av" style="background:${m.color}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span></div>`:'')
-      }
-      <span class="prio-tag ${t.prio}" ${own?`onclick="event.stopPropagation();openPrioPicker('${proj.id}','${t.id}',this)"style="cursor:pointer"`:''}>${PRIO[t.prio]}</span>
+        ${m?`<div class="assignee-av" style="background:${m.color}" title="${esc(m.name)}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span>`:`<span class="no-assignee">+ исполнитель</span>`}
+      </div>`:(m?`<div class="assignee-badge"><div class="assignee-av" style="background:${m.color}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span></div>`:'')}
+      <span class="prio-tag ${t.prio}" onclick="event.stopPropagation();openPrioPicker('${proj.id}','${t.id}',this)" style="cursor:pointer">${PRIO[t.prio]}</span>
+      <button class="note-btn ${t.note?'has-note':''}" onclick="event.stopPropagation();openNote('${proj.id}','${t.id}',this)" title="${t.note?'Редактировать заметку':'Добавить заметку'}">📝</button>
       ${own?`<button class="del-task" onclick="delTask('${proj.id}','${t.id}')">×</button>`:''}
     </div>`;
   }).join(''):`<div class="empty-state"><div class="empty-icon">✓</div>${G.filter==='all'&&G.filterAssignee==='all'?(own?'Нет задач. Добавьте первую!':'Нет задач'):'Нет задач по этому фильтру'}</div>`;
@@ -685,6 +733,10 @@ function renderProjView(main,proj) {
       <input type="text" id="taskIn" placeholder="Добавить задачу..." onkeydown="if(event.key==='Enter')addTask('${proj.id}')">
       <select class="prio-select" id="prioSel">
         <option value="p1">Высокий</option><option value="p2" selected>Средний</option><option value="p3">Низкий</option><option value="p4">—</option>
+      </select>
+      <select class="prio-select" id="daySel">
+        <option value="">— день</option>
+        ${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((d,i)=>`<option value="${i+1}">${d}</option>`).join('')}
       </select>
       <select class="assignee-select" id="assigneeSel">
         <option value="">— исполнитель</option>
@@ -824,20 +876,28 @@ function addTask(pid) {
   if(!isOwn()) return;
   const inp=document.getElementById('taskIn'),prio=document.getElementById('prioSel').value;
   const assigneeId=document.getElementById('assigneeSel').value||null;
+  const day=document.getElementById('daySel')?.value||'';
   const text=inp.value.trim(); if(!text) return;
-  getTasks(pid).push({id:uid(),text,prio,done:false,assigneeId});
+  const taskList = getTasksForProject(pid);
+  taskList.push({id:uid(),text,prio,done:false,assigneeId,day,status:'new',note:''});
   inp.value=''; save(); render();
   setTimeout(()=>{const el=document.getElementById('taskIn');if(el)el.focus();},30);
 }
 function toggleTask(pid,tid) {
-  if(!isOwn()) return;
-  const t=getTasks(pid).find(x=>x.id===tid);
-  if(t){t.done=!t.done;if(t.done)t.rolledOver=false;save();render();}
+  const tasks = getTasksForProject(pid);
+  const t=tasks.find(x=>x.id===tid);
+  if(t){t.done=!t.done;if(t.done){t.rolledOver=false;t.status='done_s';}else{t.status='new';}save();render();}
 }
 function delTask(pid,tid) {
   if(!isOwn()) return;
-  const u=auid(),wk=getWeekKey(G.currentWeek);
-  if(G.tasks[u]?.[pid]?.[wk]) G.tasks[u][pid][wk]=G.tasks[u][pid][wk].filter(x=>x.id!==tid);
+  const wk=getWeekKey(G.currentWeek);
+  const isShared=(G.sharedProjects||[]).find(p=>p.id===pid);
+  if(isShared){
+    if(G.sharedTasks[pid]?.[wk]) G.sharedTasks[pid][wk]=G.sharedTasks[pid][wk].filter(x=>x.id!==tid);
+  } else {
+    const u=auid();
+    if(G.tasks[u]?.[pid]?.[wk]) G.tasks[u][pid][wk]=G.tasks[u][pid][wk].filter(x=>x.id!==tid);
+  }
   save(); render();
 }
 function delProj(pid) {
@@ -868,8 +928,13 @@ function closeModal() { document.getElementById('modalOverlay').classList.remove
 function selColor(c) { G.selColor=c; document.querySelectorAll('.color-swatch').forEach(el=>el.classList.toggle('selected',el.style.background===c)); }
 function saveProject() {
   const name=document.getElementById('modalInput').value.trim(); if(!name) return;
-  const u=auid(); if(!G.projects[u]) G.projects[u]=[];
-  G.projects[u].push({id:uid(),name,color:G.selColor});
+  const isShared=document.getElementById('sharedCheck')?.checked;
+  if(isShared) {
+    createSharedProject(name,G.selColor);
+  } else {
+    const u=auid(); if(!G.projects[u]) G.projects[u]=[];
+    G.projects[u].push({id:uid(),name,color:G.selColor});
+  }
   closeModal(); save(); render();
 }
 document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
@@ -943,6 +1008,115 @@ function delTeamMember(i) {
   save();
 }
 const tmo=document.getElementById('teamModalOverlay'); if(tmo) tmo.addEventListener('click',function(e){if(e.target===this)closeTeamModal();});
+
+// Day picker
+function openDayPicker(pid,tid,el) {
+  document.querySelectorAll('.day-picker,.status-picker,.note-popup').forEach(p=>p.remove());
+  const tasks=getTasksForProject(pid), t=tasks.find(x=>x.id===tid); if(!t) return;
+  const picker=document.createElement('div'); picker.className='day-picker';
+  picker.innerHTML=['','Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((d,i)=>
+    `<div class="day-picker-item" onclick="setDay('${pid}','${tid}',${i})">${i===0?'— без дня':d}</div>`
+  ).join('');
+  const rect=el.getBoundingClientRect();
+  picker.style.cssText=`top:${rect.bottom+4}px;left:${rect.left}px`;
+  document.body.appendChild(picker);
+  setTimeout(()=>document.addEventListener('click',()=>picker.remove(),{once:true}),10);
+}
+function setDay(pid,tid,day) {
+  const t=getTasksForProject(pid).find(x=>x.id===tid);
+  if(t){t.day=day||'';save();render();}
+  document.querySelectorAll('.day-picker').forEach(p=>p.remove());
+}
+
+// Status picker
+function openStatusPicker(pid,tid,el) {
+  document.querySelectorAll('.day-picker,.status-picker,.note-popup').forEach(p=>p.remove());
+  const tasks=getTasksForProject(pid), t=tasks.find(x=>x.id===tid); if(!t) return;
+  const picker=document.createElement('div'); picker.className='status-picker';
+  picker.innerHTML=Object.entries(STATUS).map(([k,v])=>
+    `<div class="status-picker-item" onclick="setStatus('${pid}','${tid}','${k}')" style="color:${STATUS_C[k]}">${v}</div>`
+  ).join('');
+  const rect=el.getBoundingClientRect();
+  picker.style.cssText=`top:${rect.bottom+4}px;left:${rect.left}px`;
+  document.body.appendChild(picker);
+  setTimeout(()=>document.addEventListener('click',()=>picker.remove(),{once:true}),10);
+}
+function setStatus(pid,tid,status) {
+  const t=getTasksForProject(pid).find(x=>x.id===tid);
+  if(t){t.status=status;if(status==='done_s')t.done=true;else t.done=false;save();render();}
+  document.querySelectorAll('.status-picker').forEach(p=>p.remove());
+}
+
+// Note popup
+function openNote(pid,tid,el) {
+  document.querySelectorAll('.day-picker,.status-picker,.note-popup').forEach(p=>p.remove());
+  const t=getTasksForProject(pid).find(x=>x.id===tid); if(!t) return;
+  const popup=document.createElement('div'); popup.className='note-popup';
+  popup.innerHTML=`<textarea id="noteTA" placeholder="Заметка к задаче...">${esc(t.note||'')}</textarea>
+    <div class="note-popup-btns">
+      <button class="btn-cancel" onclick="document.querySelectorAll('.note-popup').forEach(p=>p.remove())">Отмена</button>
+      <button class="add-btn" onclick="saveNote('${pid}','${tid}')">Сохранить</button>
+    </div>`;
+  const rect=el.getBoundingClientRect();
+  popup.style.cssText=`top:${rect.bottom+4}px;left:${Math.min(rect.left,window.innerWidth-270)}px`;
+  document.body.appendChild(popup);
+  setTimeout(()=>document.getElementById('noteTA')?.focus(),30);
+}
+function saveNote(pid,tid) {
+  const t=getTasksForProject(pid).find(x=>x.id===tid);
+  const ta=document.getElementById('noteTA');
+  if(t&&ta){t.note=ta.value.trim();save();render();}
+  document.querySelectorAll('.note-popup').forEach(p=>p.remove());
+}
+
+// Task drag & drop
+let taskDragId=null, taskDragPid=null;
+function taskDragStart(e,pid,tid){taskDragId=tid;taskDragPid=pid;e.dataTransfer.effectAllowed='move';}
+function taskDragOver2(e,pid,tid){e.preventDefault();if(taskDragId===tid)return;e.currentTarget.classList.add('drag-task-over');}
+function taskDragLeave2(e){e.currentTarget.classList.remove('drag-task-over');}
+function taskDrop(e,pid,tid){
+  e.preventDefault();e.currentTarget.classList.remove('drag-task-over');
+  if(!taskDragId||taskDragId===tid||taskDragPid!==pid)return;
+  const tasks=getTasksForProject(pid);
+  const fi=tasks.findIndex(t=>t.id===taskDragId),ti=tasks.findIndex(t=>t.id===tid);
+  if(fi===-1||ti===-1)return;
+  tasks.splice(ti,0,tasks.splice(fi,1)[0]);
+  taskDragId=null;save();render();
+}
+
+// Workload in sidebar
+function renderWorkload() {
+  const members=getAllMembers().filter(m=>!m.isSelf);
+  if(!members.length){document.getElementById('teamPanel').innerHTML='';return;}
+  const wk=getWeekKey(G.currentWeek);
+  const allProjs=[...getProjects(),(G.sharedProjects||[])];
+  const counts={};
+  members.forEach(m=>counts[m.id]=0);
+  allProjs.forEach(p=>{
+    const pid=p.id||p;
+    const tasks=(G.tasks[auid()]?.[pid]?.[wk]||[]).concat(G.sharedTasks[pid]?.[wk]||[]);
+    tasks.filter(t=>!t.done&&t.assigneeId&&counts[t.assigneeId]!==undefined).forEach(t=>counts[t.assigneeId]++);
+  });
+  document.getElementById('teamPanel').innerHTML=`
+    <div class="team-panel-title">Команда</div>
+    <div class="workload-bar">${members.map(m=>`
+      <div class="workload-row">
+        <div class="workload-av" style="background:${m.color}">${memberInitials(m)}</div>
+        <span class="workload-name">${esc(m.name)}</span>
+        <span class="workload-count">${counts[m.id]||0} задач</span>
+      </div>`).join('')}
+    </div>`;
+}
+
+// Shared projects
+function createSharedProject(name,color) {
+  const id=uid();
+  if(!G.sharedProjects) G.sharedProjects=[];
+  G.sharedProjects.push({id,name,color,_shared:true});
+  if(!G.sharedTasks) G.sharedTasks={};
+  G.sharedTasks[id]={};
+  save();render();
+}
 
 function resetApp() {
   if(!confirm('Удалить все данные и начать заново?')) return;
