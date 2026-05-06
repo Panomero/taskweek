@@ -610,9 +610,17 @@ async function sbGet() {
   return d.length ? d[0].value : null;
 }
 
+let lastSavedHash = '';
 function save() {
   clearTimeout(saveT);
-  saveT=setTimeout(async()=>{ try{await sbSet(JSON.stringify(G));}catch(e){} },600);
+  saveT=setTimeout(async()=>{
+    try {
+      const data = JSON.stringify(G);
+      if(data === lastSavedHash) return; // no change, skip
+      lastSavedHash = data;
+      await sbSet(data);
+    } catch(e){}
+  },1500);
 }
 
 function uid() { return Math.random().toString(36).slice(2,9); }
@@ -760,6 +768,7 @@ function renderSidebar() {
       <span class="mini-stat"><strong>${tot-dn}</strong> осталось</span>
       <span class="mini-stat"><strong>${tot}</strong> всего</span>
     </div>`;
+}
 
 let taskDragId = null;
 let taskDragPid = null;
@@ -807,7 +816,6 @@ if('serviceWorker' in navigator) {
 }
 
 load();
-}
 
 function renderMain() {
   const taskInEl = document.getElementById('taskIn');
@@ -1446,7 +1454,7 @@ function openTeamModal() {
 }
 function closeTeamModal() {
   document.getElementById('teamModalOverlay').classList.remove('open');
-  save(); render();
+  render(); // save() is called by individual actions, not on close
 }
 function openSettingsMain() {
   document.getElementById('settingsTitle').textContent = 'Настройки';
