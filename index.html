@@ -1087,10 +1087,6 @@ function renderProjView(main,proj) {
       <select class="prio-select" id="prioSel">
         <option value="p1">Высокий</option><option value="p2" selected>Средний</option><option value="p3">Низкий</option><option value="p4">—</option>
       </select>
-      <select class="prio-select" id="daySel">
-        <option value="">— день</option>
-        ${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((d,i)=>`<option value="${i+1}">${d}</option>`).join('')}
-      </select>
       <select class="assignee-select" id="assigneeSel">
         <option value="">— исполнитель</option>
         ${getAllMembers().map(m=>`<option value="${m.id}">${m.isSelf?'👤 '+esc(m.name)+' (я)':esc(m.name)}</option>`).join('')}
