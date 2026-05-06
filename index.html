@@ -167,7 +167,25 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 .filter-chip:hover { background: var(--surface2); }
 .filter-chip.on { background: var(--text); color: var(--bg); border-color: transparent; }
 .filter-sep { width: 1px; height: 16px; background: var(--border2); flex-shrink: 0; }
-.tasks-scroll { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 5px; }
+.tasks-scroll { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 0; }
+.section-block { margin-bottom: 16px; }
+.section-header { display:flex;align-items:center;gap:8px;padding:6px 0 6px 2px;margin-bottom:4px;cursor:pointer;user-select:none }
+.section-toggle { font-size:10px;color:var(--text3);transition:transform 0.15s;flex-shrink:0 }
+.section-toggle.open { transform:rotate(90deg) }
+.section-name { font-size:12px;font-weight:600;color:var(--text2);letter-spacing:0.03em;flex:1 }
+.section-name-edit { font-size:12px;font-weight:600;color:var(--text);background:transparent;border:none;border-bottom:1px solid var(--border2);outline:none;flex:1;font-family:var(--font) }
+.section-count { font-size:11px;font-family:var(--mono);color:var(--text3) }
+.section-prog { height:2px;background:var(--border2);border-radius:2px;overflow:hidden;width:40px }
+.section-prog-fill { height:100%;border-radius:2px;background:var(--text2);transition:width 0.3s }
+.section-del { background:transparent;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0;opacity:0;transition:opacity 0.15s }
+.section-header:hover .section-del { opacity:1 }
+.section-del:hover { color:var(--p1) }
+.section-tasks { display:flex;flex-direction:column;gap:5px;padding-left:0 }
+.section-tasks.collapsed { display:none }
+.add-section-btn { display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;color:var(--text3);font-size:12px;background:none;border:none;font-family:var(--font);transition:color 0.15s;margin-top:4px }
+.add-section-btn:hover { color:var(--text) }
+.unsectioned { display:flex;flex-direction:column;gap:5px;margin-bottom:8px }
+.task-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); transition: opacity 0.2s; }
 
 /* TASK ROW */
 .task-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); transition: opacity 0.2s; }
@@ -565,6 +583,50 @@ function getTasks(pid) {
   if(!G.tasks[u][pid][wk]) G.tasks[u][pid][wk]=[];
   return G.tasks[u][pid][wk];
 }
+function getSections(pid) {
+  const u=auid(),wk=getWeekKey(G.currentWeek);
+  if(!G.sections) G.sections={};
+  if(!G.sections[u]) G.sections[u]={};
+  if(!G.sections[u][pid]) G.sections[u][pid]={};
+  if(!G.sections[u][pid][wk]) G.sections[u][pid][wk]=[];
+  return G.sections[u][pid][wk];
+}
+function addSection(pid) {
+  const name = prompt('Название группы:','');
+  if(!name||!name.trim()) return;
+  const sects = getSections(pid);
+  sects.push({id:Math.random().toString(36).slice(2,9), name:name.trim(), collapsed:false});
+  save(); render();
+}
+function delSection(pid, sid) {
+  if(!confirm('Удалить группу? Задачи останутся без группы.')) return;
+  const sects = getSections(pid);
+  const idx = sects.findIndex(s=>s.id===sid);
+  if(idx===-1) return;
+  // move tasks to unsectioned
+  const tasks = getTasks(pid);
+  tasks.forEach(t=>{ if(t.sectionId===sid) t.sectionId=null; });
+  sects.splice(idx,1);
+  save(); render();
+}
+function renameSection(pid, sid) {
+  const sects = getSections(pid);
+  const sect = sects.find(s=>s.id===sid);
+  if(!sect) return;
+  const newName = prompt('Переименовать группу:', sect.name);
+  if(newName&&newName.trim()) { sect.name=newName.trim(); save(); render(); }
+}
+function toggleSection(pid, sid) {
+  const sects = getSections(pid);
+  const sect = sects.find(s=>s.id===sid);
+  if(sect) { sect.collapsed=!sect.collapsed; save(); render(); }
+}
+function setTaskSection(pid, tid, sid) {
+  const tasks = getTasks(pid);
+  const t = tasks.find(x=>x.id===tid);
+  if(t) { t.sectionId=sid; save(); render(); }
+  closePicker();
+}
 
 function getTeam() { return G.teams[auid()]||[]; }
 function getAllMembers() {
@@ -657,15 +719,15 @@ function renderOverview(main) {
       </div>
       <div class="card-tasks">
         ${!total?`<div style="color:var(--text3);font-size:12px;padding:8px 0">Нет задач на эту неделю</div>`:''}
-        ${prev.map(t=>{
-          const m=t.assigneeId?getMember(t.assigneeId):null;
-          return `<div class="card-task ${t.done?'done':''}">
-            <div class="card-check-mini ${t.done?'done':''}"></div>
-            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.text)}</span>
-            ${m?`<div class="card-assignee-mini" style="background:${m.color}" title="${esc(m.name)}">${memberInitials(m)}</div>`:`<div class="card-prio-dot" style="background:${PRIO_C[t.prio]}"></div>`}
-          </div>`;
-        }).join('')}
-        ${more>0?`<div class="card-more">+${more} ещё</div>`:''}
+        ${(()=>{
+          const sects=getSections(p.id);
+          const unsect=prev.filter(t=>!t.sectionId);
+          let ch='';
+          if(unsect.length) ch+=unsect.map(t=>{const m=t.assigneeId?getMember(t.assigneeId):null;return `<div class="card-task ${t.done?'done':''}"><div class="card-check-mini ${t.done?'done':''}"></div><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.text)}</span>${m?`<div class="card-assignee-mini" style="background:${m.color}">${memberInitials(m)}</div>`:`<div class="card-prio-dot" style="background:${PRIO_C[t.prio]}"></div>`}</div>`;}).join('');
+          sects.forEach(sect=>{const st=prev.filter(t=>t.sectionId===sect.id);if(!st.length)return;const sd=st.filter(t=>t.done).length;ch+=`<div style="font-size:10px;font-weight:600;color:var(--text3);padding:4px 0 2px;letter-spacing:0.04em">${esc(sect.name)} ${sd}/${st.length}</div>`;ch+=st.map(t=>{const m=t.assigneeId?getMember(t.assigneeId):null;return `<div class="card-task ${t.done?'done':''}"><div class="card-check-mini ${t.done?'done':''}"></div><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.text)}</span>${m?`<div class="card-assignee-mini" style="background:${m.color}">${memberInitials(m)}</div>`:`<div class="card-prio-dot" style="background:${PRIO_C[t.prio]}"></div>`}</div>`;}).join('');});
+          if(more>0) ch+=`<div class="card-more">+${more} ещё</div>`;
+          return ch;
+        })()}
       </div>
       <div class="card-footer">
         <div class="card-progress"><div class="card-progress-fill" style="width:${pct}%;background:${p.color}"></div></div>
@@ -674,6 +736,60 @@ function renderOverview(main) {
     </div>`;
   }).join('');
   main.innerHTML=`<div class="overview">${cards}</div>`;
+}
+
+function buildSectionsHTML(pid, filtered, own) {
+  const sects = getSections(pid);
+  const uid_ = auid();
+  const wk = getWeekKey(G.currentWeek);
+
+  function taskHTML(t) {
+    const m=t.assigneeId?getMember(t.assigneeId):null;
+    return `<div class="task-row ${t.done?'done':''}" style="position:relative">
+      <div class="check ${t.done?'checked':''} ${own?'':'dis'}" ${own?`onclick="toggleTask('${pid}','${t.id}')"`:''}></div>
+      <span class="task-txt">${esc(t.text)}</span>
+      ${t.rolledOver&&!t.done?`<span class="rolled-tag" title="Перенесено">↩</span>`:''}
+      ${own?`<div class="assignee-badge" onclick="event.stopPropagation();openPicker('${pid}','${t.id}',this)">
+        ${m?`<div class="assignee-av" style="background:${m.color}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span>`:`<span class="no-assignee">+ исполнитель</span>`}
+      </div>`:(m?`<div class="assignee-badge"><div class="assignee-av" style="background:${m.color}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span></div>`:'')}
+      <span class="prio-tag ${t.prio}" ${own?`onclick="event.stopPropagation();openPrioPicker('${pid}','${t.id}',this)"style="cursor:pointer"`:''}>${PRIO[t.prio]}</span>
+      ${own?`<button class="del-task" onclick="delTask('${pid}','${t.id}')">×</button>`:''}
+    </div>`;
+  }
+
+  const unsectioned = filtered.filter(t=>!t.sectionId);
+  let html = '';
+
+  // Unsectioned tasks first
+  if(unsectioned.length) {
+    html += `<div class="unsectioned">${unsectioned.map(taskHTML).join('')}</div>`;
+  }
+
+  // Sections
+  sects.forEach(sect => {
+    const stasks = filtered.filter(t=>t.sectionId===sect.id);
+    const sdone = stasks.filter(t=>t.done).length;
+    const spct = stasks.length ? Math.round(sdone/stasks.length*100) : 0;
+    html += `<div class="section-block">
+      <div class="section-header" onclick="toggleSection('${pid}','${sect.id}')">
+        <span class="section-toggle ${sect.collapsed?'':'open'}">▶</span>
+        <span class="section-name" ondblclick="event.stopPropagation();renameSection('${pid}','${sect.id}')">${esc(sect.name)}</span>
+        <span class="section-count">${sdone}/${stasks.length}</span>
+        <div class="section-prog"><div class="section-prog-fill" style="width:${spct}%"></div></div>
+        ${own?`<button class="section-del" onclick="event.stopPropagation();delSection('${pid}','${sect.id}')">×</button>`:''}
+      </div>
+      <div class="section-tasks ${sect.collapsed?'collapsed':''}">
+        ${stasks.length?stasks.map(taskHTML).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 2px">Нет задач</div>'}
+      </div>
+    </div>`;
+  });
+
+  if(!filtered.length && !unsectioned.length) {
+    html = `<div class="empty-state"><div class="empty-icon">✓</div>${own?'Нет задач. Добавьте первую!':'Нет задач'}</div>`;
+  }
+
+  if(own) html += `<button class="add-section-btn" onclick="addSection('${pid}')">＋ Добавить группу</button>`;
+  return html;
 }
 
 function renderProjView(main,proj) {
@@ -742,6 +858,10 @@ function renderProjView(main,proj) {
         <option value="">— исполнитель</option>
         ${getAllMembers().map(m=>`<option value="${m.id}">${m.isSelf?'👤 '+esc(m.name)+' (я)':esc(m.name)}</option>`).join('')}
       </select>
+      <select class="prio-select" id="sectionSel">
+        <option value="">— без группы</option>
+        ${getSections(proj.id).map(sc=>`<option value="${sc.id}">${esc(sc.name)}</option>`).join('')}
+      </select>
       <button class="add-btn" onclick="addTask('${proj.id}')">+ Добавить</button>
     </div>`:''}
     <div class="filter-row">
@@ -751,7 +871,7 @@ function renderProjView(main,proj) {
         <button class="filter-chip ${G.filterAssignee==='none'?'on':''}" onclick="setFilterAssignee('none')">Без исполнителя</button>
         ${memberChips.map(([id,name])=>`<button class="filter-chip ${G.filterAssignee===id?'on':''}" onclick="setFilterAssignee('${id}')">${esc(name)}</button>`).join('')}`:''}
     </div>
-    <div class="tasks-scroll">${taskHTML}</div>
+    <div class="tasks-scroll" id="tasksScroll">${buildSectionsHTML(proj.id, filtered, own)}</div>
   </div>`;
   if(own) setTimeout(()=>{const el=document.getElementById('taskIn');if(el)el.focus();},50);
 }
