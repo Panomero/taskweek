@@ -715,6 +715,18 @@ function getMember(id) { return getAllMembers().find(m=>m.id===id)||G.users.find
 function memberInitials(m) { if(!m) return '?'; return m.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
 
 // Render
+function applyTheme() { document.documentElement.setAttribute('data-theme',G.theme); }
+
+function checkMobile() {
+  const mob = window.innerWidth <= 680;
+  document.getElementById('menuBtn').style.display = mob ? 'flex' : 'none';
+  const fr = document.getElementById('filterRow');
+  if(fr && !mob) fr.classList.remove('mob-collapsed');
+}
+function toggleMobileMenu() { document.getElementById('sidebar').classList.toggle('mob-open'); }
+function closeMob() { document.getElementById('sidebar').classList.remove('mob-open'); }
+window.addEventListener('resize',checkMobile);
+
 function render() { renderTopbar(); renderSidebar(); renderMain(); checkMobile(); }
 
 function renderTopbar() {
