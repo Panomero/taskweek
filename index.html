@@ -960,7 +960,7 @@ function buildSectionsHTML(pid, filtered, own) {
     const m = t.assigneeId ? getMember(t.assigneeId) : null;
     return `<div class="task-row ${t.done?'done':''}" id="tr-${t.id}" ${own?`draggable="true" ondragstart="taskDragStart(event,'${pid}','${t.id}')" ondragend="taskDragEnd(event)"`:''}  style="position:relative">
       <div class="check ${t.done?'checked':''} ${own?'':'dis'}" ${own?`onclick="toggleTask('${pid}','${t.id}')"`:''}></div>
-      <span class="task-txt" ondblclick="if(own)event.stopPropagation(),renameTask('${proj.id}','${t.id}',this)">${esc(t.text)}</span>
+      <span class="task-txt" ondblclick="if(own)event.stopPropagation(),renameTask('${pid}','${t.id}',this)">${esc(t.text)}</span>
       ${t.rolledOver&&!t.done?`<span class="rolled-tag">↩</span>`:''}
       ${own?`<div class="assignee-badge" onclick="event.stopPropagation();openPicker('${pid}','${t.id}',this)">
         ${m?`<div class="assignee-av" style="background:${m.color}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span>`:`<span class="no-assignee">+ исполнитель</span>`}
