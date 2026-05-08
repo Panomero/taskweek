@@ -1368,11 +1368,8 @@ function toggleTask(pid,tid) {
 function delTask(pid,tid) {
   if(!isOwn()) return;
   const wk=getWeekKey(G.currentWeek);
-  if(isShared){
-  } else {
-    const u=auid();
-    if(G.tasks[u]?.[pid]?.[wk]) G.tasks[u][pid][wk]=G.tasks[u][pid][wk].filter(x=>x.id!==tid);
-  }
+  const u=auid();
+  if(G.tasks[u]?.[pid]?.[wk]) G.tasks[u][pid][wk]=G.tasks[u][pid][wk].filter(x=>x.id!==tid);
   save(); render();
 }
 function delProj(pid) {
