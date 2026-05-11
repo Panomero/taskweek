@@ -1431,9 +1431,18 @@ function delProj(pid) {
   save(); render();
 }
 
+function toggleTheme() {
+  const cur = localStorage.getItem('tw_theme') || G.theme || 'dark';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('tw_theme', next);
+  applyTheme();
+}
 function toggleFocus() { G.focus=!G.focus; save(); render(); }
 function toggleTheme() { G.theme=G.theme==='light'?'dark':'light'; applyTheme(); save(); }
-function applyTheme() { document.documentElement.setAttribute('data-theme',G.theme); }
+function applyTheme() {
+  const localTheme = localStorage.getItem('tw_theme') || G.theme || 'dark';
+  document.documentElement.setAttribute('data-theme', localTheme);
+}
 
 function checkMobile() {
   const mob = window.innerWidth <= 680;
