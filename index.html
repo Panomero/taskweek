@@ -389,7 +389,7 @@ input, select, button, textarea { font-family: var(--font); }
   .week-sub { display: none; }
   .pill-name { display: none; }
   .focus-btn { display: none !important; }
-  .topbar-actions .icon-btn:not(#menuBtn) { display: none; }
+  .topbar-actions .icon-btn:not(#menuBtn):not(#themeBtn) { display: none; }
   #menuBtn { display: flex !important; }
   .overview { grid-template-columns: 1fr; padding: 12px; gap: 10px; }
   .project-header { padding: 10px 14px; }
@@ -441,7 +441,7 @@ input, select, button, textarea { font-family: var(--font); }
     </div>
     <div class="topbar-actions">
       <button class="icon-btn focus-btn" id="focusBtn" onclick="toggleFocus()">⤢</button>
-      <button class="icon-btn" onclick="toggleTheme()">◑</button>
+      <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">◑</button>
       <button class="icon-btn" onclick="openTeamModal()" title="Настройки">⚙</button>
       <button class="icon-btn" id="menuBtn" onclick="toggleMobileMenu()" style="display:none">☰</button>
     </div>
