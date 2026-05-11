@@ -1237,7 +1237,7 @@ function addTask(pid) {
   const prio = prioEl ? prioEl.value : 'p2';
   const assigneeId = assigneeEl ? (assigneeEl.value || null) : null;
   getTasks(pid).push({id:uid(), text, prio, done:false, assigneeId, sectionId:null, rolledOver:false});
-  inp.value=''; save(); render();
+  inp.value=''; G.filter='all'; G.filterAssignee='all'; save(); render();
   setTimeout(()=>{ const el=document.getElementById('taskIn'); if(el) el.focus(); }, 30);
 }
 function addTaskInline(pid, sectionId, inputId) {
