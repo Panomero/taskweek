@@ -278,6 +278,12 @@ input, select, button, textarea { font-family: var(--font); }
 .task-row:hover .del-task { opacity: 1; }
 @media (hover: none) { .del-task { opacity: 1; } }
 .del-task:hover { color: var(--p1); }
+.task-menu-btn { background: transparent; border: none; cursor: pointer; color: var(--text3); font-size: 18px; line-height: 1; padding: 0 4px; }
+.task-menu-btn:hover { color: var(--text1); }
+.task-menu { position: absolute; right: 0; top: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 0; z-index: 100; min-width: 160px; box-shadow: 0 4px 12px #0004; }
+.task-menu-item { padding: 8px 14px; cursor: pointer; font-size: 13px; color: var(--text1); white-space: nowrap; }
+.task-menu-item:hover { background: var(--bg3); }
+.task-menu-section { padding: 4px 14px 2px; font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: 0.05em; }
 
 /* ── Inline add ── */
 .inline-add-input { flex: 1; background: transparent; border: none; outline: none; font-size: 14px; color: var(--text3); padding: 0; }
@@ -967,7 +973,7 @@ function buildSectionsHTML(pid, filtered, own) {
         ${m?`<div class="assignee-av" style="background:${m.color}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span>`:`<span class="no-assignee">+ исполнитель</span>`}
       </div>`:(m?`<div class="assignee-badge"><div class="assignee-av" style="background:${m.color}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span></div>`:'')}
       <span class="prio-tag ${t.prio}" ${own?`onclick="event.stopPropagation();openPrioPicker('${pid}','${t.id}',this)" style="cursor:pointer"`:''}>${PRIO[t.prio]}</span>
-      ${own?`<button class="del-task fwd-btn" title="Передать" onclick="event.stopPropagation();forwardTask('${pid}','${t.id}')" style="color:var(--accent)">⇢</button><button class="del-task" onclick="delTask('${pid}','${t.id}')">×</button>`:''}
+      ${own?`<button class="task-menu-btn" onclick="event.stopPropagation();openTaskMenu('${pid}','${t.id}',this)">⋯</button><button class="del-task fwd-btn" title="Передать" onclick="event.stopPropagation();forwardTask('${pid}','${t.id}')" style="color:var(--accent)">⇢</button><button class="del-task" onclick="delTask('${pid}','${t.id}')">×</button>`:''}
     </div>`;
   }
 
@@ -1105,6 +1111,40 @@ function renderProjView(main,proj) {
     <div class="tasks-scroll" id="tasksScroll">${buildSectionsHTML(proj.id, filtered, own)}</div>
   </div>`;
   if(own) setTimeout(()=>{const el=document.getElementById('taskIn');if(el)el.focus();},50);
+}
+
+
+function openTaskMenu(pid, tid, btn) {
+  document.querySelectorAll('.task-menu').forEach(m=>m.remove());
+  const sects = getSections(pid);
+  const task = getTasks(pid).find(t=>t.id===tid);
+  if(!task) return;
+
+  const menu = document.createElement('div');
+  menu.className = 'task-menu';
+
+  let html = '<div class="task-menu-section">Переместить в группу</div>';
+  html += '<div class="task-menu-item" onclick="moveTaskToSection(\''+pid+'\',\''+tid+'\',null);document.querySelectorAll(\'.task-menu\').forEach(m=>m.remove())">— Без группы</div>';
+  sects.forEach(s => {
+    if(s.id !== task.sectionId) {
+      html += '<div class="task-menu-item" onclick="moveTaskToSection(\''+pid+'\',\''+tid+'\',\''+s.id+'\');document.querySelectorAll(\'.task-menu\').forEach(m=>m.remove())">' + esc(s.name) + '</div>';
+    }
+  });
+  menu.innerHTML = html;
+
+  btn.parentElement.style.position = 'relative';
+  btn.parentElement.appendChild(menu);
+
+  setTimeout(() => document.addEventListener('click', function h() {
+    document.querySelectorAll('.task-menu').forEach(m=>m.remove());
+    document.removeEventListener('click', h);
+  }), 0);
+}
+
+function moveTaskToSection(pid, tid, sid) {
+  const tasks = getTasks(pid);
+  const task = tasks.find(t=>t.id===tid);
+  if(task) { task.sectionId = sid || null; save(); render(); }
 }
 
 // Assignee picker
