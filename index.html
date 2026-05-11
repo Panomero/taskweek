@@ -1136,8 +1136,9 @@ function openDeadlinePicker(pid, tid, el) {
   picker.className = 'task-menu deadline-picker';
   const val = task.deadline ? task.deadline.slice(0,10) : '';
   picker.innerHTML = `<div class="task-menu-section">Дедлайн</div>
-    <div style="padding:8px 12px"><input type="date" value="${val}" style="background:#2c2c2e;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;padding:6px 10px;font-size:14px;width:100%;box-sizing:border-box" onchange="setDeadline('${pid}','${tid}',this.value);document.querySelectorAll('.deadline-picker').forEach(p=>p.remove())"></div>
+    <div style="padding:8px 12px"><input type="date" id="dlInput_${tid}" value="${val}" style="background:#2c2c2e;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;padding:10px 12px;font-size:15px;width:100%;box-sizing:border-box;cursor:pointer" onclick="this.showPicker&&this.showPicker()" onchange="setDeadline('${pid}','${tid}',this.value);document.querySelectorAll('.deadline-picker').forEach(p=>p.remove())"></div>
     ${val?`<div class="task-menu-item" style="color:#E05C5C" onclick="setDeadline('${pid}','${tid}',null);document.querySelectorAll('.deadline-picker').forEach(p=>p.remove())">✕ Убрать дедлайн</div>`:''}`;
+  setTimeout(()=>{const inp=document.getElementById('dlInput_${tid}');if(inp&&inp.showPicker)inp.showPicker();},100);
   document.body.appendChild(picker);
   const r = el.getBoundingClientRect();
   let left = r.left;
