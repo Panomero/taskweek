@@ -278,12 +278,12 @@ input, select, button, textarea { font-family: var(--font); }
 .task-row:hover .del-task { opacity: 1; }
 @media (hover: none) { .del-task { opacity: 1; } }
 .del-task:hover { color: var(--p1); }
-.task-menu-btn { background: transparent; border: none; cursor: pointer; color: var(--text3); font-size: 18px; line-height: 1; padding: 0 4px; }
-.task-menu-btn:hover { color: var(--text1); }
-.task-menu { position: absolute; right: 0; top: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 0; z-index: 100; min-width: 160px; box-shadow: 0 4px 12px #0004; }
-.task-menu-item { padding: 8px 14px; cursor: pointer; font-size: 13px; color: var(--text1); white-space: nowrap; }
-.task-menu-item:hover { background: var(--bg3); }
-.task-menu-section { padding: 4px 14px 2px; font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: 0.05em; }
+.task-menu-btn { background: rgba(255,255,255,0.1); border: none; cursor: pointer; color: #fff; font-size: 16px; line-height: 1; padding: 2px 8px; border-radius: 6px; }
+.task-menu-btn:hover { background: rgba(255,255,255,0.2); }
+.task-menu { position: fixed; background: #1c1c1e; border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 6px 0; z-index: 9999; min-width: 200px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+.task-menu-item { padding: 12px 16px; cursor: pointer; font-size: 15px; color: #fff; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.task-menu-item:hover { background: rgba(255,255,255,0.1); }
+.task-menu-section { padding: 8px 16px 4px; font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 600; letter-spacing: 0.05em; }
 
 /* ── Inline add ── */
 .inline-add-input { flex: 1; background: transparent; border: none; outline: none; font-size: 14px; color: var(--text3); padding: 0; }
@@ -1124,16 +1124,23 @@ function openTaskMenu(pid, tid, btn) {
   menu.className = 'task-menu';
 
   let html = '<div class="task-menu-section">Переместить в группу</div>';
-  html += '<div class="task-menu-item" onclick="moveTaskToSection(\''+pid+'\',\''+tid+'\',null);document.querySelectorAll(\'.task-menu\').forEach(m=>m.remove())">— Без группы</div>';
+  html += '<div class="task-menu-item" onclick="moveTaskToSection(''+pid+'',''+tid+'',null);document.querySelectorAll('.task-menu').forEach(m=>m.remove())">— Без группы</div>';
   sects.forEach(s => {
     if(s.id !== task.sectionId) {
-      html += '<div class="task-menu-item" onclick="moveTaskToSection(\''+pid+'\',\''+tid+'\',\''+s.id+'\');document.querySelectorAll(\'.task-menu\').forEach(m=>m.remove())">' + esc(s.name) + '</div>';
+      html += '<div class="task-menu-item" onclick="moveTaskToSection(''+pid+'',''+tid+'',''+s.id+'');document.querySelectorAll('.task-menu').forEach(m=>m.remove())">' + esc(s.name) + '</div>';
     }
   });
   menu.innerHTML = html;
+  document.body.appendChild(menu);
 
-  btn.parentElement.style.position = 'relative';
-  btn.parentElement.appendChild(menu);
+  const r = btn.getBoundingClientRect();
+  const mw = 200;
+  let left = r.right - mw;
+  if(left < 8) left = 8;
+  let top = r.bottom + 4;
+  if(top + 200 > window.innerHeight) top = r.top - 210;
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
 
   setTimeout(() => document.addEventListener('click', function h() {
     document.querySelectorAll('.task-menu').forEach(m=>m.remove());
