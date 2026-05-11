@@ -822,7 +822,6 @@ if('serviceWorker' in navigator) {
   window.addEventListener('load', ()=>navigator.serviceWorker.register('/taskweek/sw.js').catch(()=>{}));
 }
 
-load();
 
 function renderMain() {
   const taskInEl = document.getElementById('taskIn');
