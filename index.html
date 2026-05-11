@@ -287,7 +287,7 @@ input, select, button, textarea { font-family: var(--font); }
 .deadline-tag.none { background: transparent; color: var(--text3); }
 .card-task.deadline-soon { background: rgba(240,165,0,0.12); border-radius: 6px; }
 .card-task.deadline-over { background: rgba(224,92,92,0.15); border-radius: 6px; animation: pulse-red 2s infinite; }
-.task-row:has(.deadline-tag.soon) { border-color: rgba(240,165,0,0.9) !important; background: rgba(240,165,0,0.22) !important; }
+.task-row:has(.deadline-tag.soon) { border-color: #F0A500 !important; background: rgba(240,165,0,0.35) !important; }
 .task-row:has(.deadline-tag.over) { border-color: rgba(224,92,92,1) !important; background: rgba(224,92,92,0.28) !important; animation: pulse-red 2s infinite; }
 @keyframes pulse-red { 0%,100% { background: rgba(224,92,92,0.28) !important; } 50% { background: rgba(224,92,92,0.42) !important; } }
 .task-menu { position: fixed; background: #1c1c1e; border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 6px 0; z-index: 9999; min-width: 200px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
