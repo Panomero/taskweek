@@ -276,6 +276,7 @@ input, select, button, textarea { font-family: var(--font); }
 .rolled-tag { font-size: 11px; padding: 2px 7px; border-radius: 8px; flex-shrink: 0; background: var(--surface2); color: var(--text3); border: 1px dashed var(--border2); }
 .del-task { background: transparent; border: none; cursor: pointer; color: var(--text3); font-size: 16px; line-height: 1; padding: 0 2px; opacity: 0; transition: opacity 0.15s; }
 .task-row:hover .del-task { opacity: 1; }
+@media (hover: none) { .del-task { opacity: 1; } }
 .del-task:hover { color: var(--p1); }
 
 /* ── Inline add ── */
