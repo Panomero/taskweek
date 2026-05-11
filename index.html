@@ -945,7 +945,7 @@ function renderOverview(main) {
   if(!projs.length){main.innerHTML=`<div class="overview"><div class="empty-state"><div class="empty-icon">📂</div>Нет проектов</div></div>`;return;}
   const cards=projs.map(p=>{
     const tasks=getTasks(p.id),done=tasks.filter(t=>t.done).length,total=tasks.length,pct=total?Math.round(done/total*100):0;
-    const sorted=[...tasks].sort((a,b)=>(a.done!==b.done?a.done?1:-1:0)||(PRIO_O[a.prio]-PRIO_O[b.prio]));
+    const _dls=t=>t.deadline&&!t.done?Math.ceil((new Date(t.deadline)-new Date().setHours(0,0,0,0))/86400000):9999;const sorted=[...tasks].sort((a,b)=>(a.done!==b.done?a.done?1:-1:0)||(_dls(a)-_dls(b))||(PRIO_O[a.prio]-PRIO_O[b.prio]));
     const prev=sorted.slice(0,5),more=sorted.length-prev.length;
     return `<div class="proj-card ${own?'':'ro'}" ${own?`onclick="setView('${p.id}')"`:''}>
       <div class="card-header">
