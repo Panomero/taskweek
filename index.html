@@ -1094,7 +1094,7 @@ function renderProjView(main,proj) {
       </select>
       <button class="add-btn" onclick="addTask('${proj.id}')">+ Добавить</button>
     </div>`:''}
-    <div class="filter-row mob-collapsed" id="filterRow">
+    <div class="filter-row ${G.filterRowOpen?"":"mob-collapsed"}" id="filterRow">
       <button class="filter-chip filter-toggle-btn" style="display:none" onclick="toggleFilterRow()">⊟ Фильтры</button>
       ${statusChips.map(([v,l])=>`<button class="filter-chip ${G.filter===v?'on':''}" onclick="setFilter('${v}')">${l}</button>`).join('')}
       ${allMembers.length?`<div class="filter-sep"></div>
@@ -1220,12 +1220,12 @@ function dragDrop(e, pid, zone) {
   dragId = null;
   save(); render();
 }
-function setFilter(f) { G.filter=f; render(); }
+function setFilter(f) { G.filter=f; G.filterRowOpen=true; render(); }
 function toggleFilterRow() {
   const fr = document.getElementById('filterRow');
   if(fr) fr.classList.toggle('mob-collapsed');
 }
-function setFilterAssignee(id) { G.filterAssignee=id; render(); }
+function setFilterAssignee(id) { G.filterAssignee=id; G.filterRowOpen=true; render(); }
 
 function addTask(pid) {
   if(!isOwn()) return;
