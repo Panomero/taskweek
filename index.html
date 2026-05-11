@@ -1128,10 +1128,10 @@ function openTaskMenu(pid, tid, btn) {
   menu.className = 'task-menu';
 
   let html = '<div class="task-menu-section">Переместить в группу</div>';
-  html += '<div class="task-menu-item" onclick="moveTaskToSection(''+pid+'',''+tid+'',null);document.querySelectorAll('.task-menu').forEach(m=>m.remove())">— Без группы</div>';
+  html += '<div class="task-menu-item" onclick="moveTaskToSection(&quot;'+pid+'&quot;,&quot;'+tid+'&quot;,null);document.querySelectorAll(&quot;.task-menu&quot;).forEach(m=>m.remove())">— Без группы</div>';
   sects.forEach(s => {
     if(s.id !== task.sectionId) {
-      html += '<div class="task-menu-item" onclick="moveTaskToSection(''+pid+'',''+tid+'',''+s.id+'');document.querySelectorAll('.task-menu').forEach(m=>m.remove())">' + esc(s.name) + '</div>';
+      html += '<div class="task-menu-item" onclick="moveTaskToSection(&quot;'+pid+'&quot;,&quot;'+tid+'&quot;,&quot;'+s.id+'&quot;);document.querySelectorAll(&quot;.task-menu&quot;).forEach(m=>m.remove())">' + esc(s.name) + '</div>';
     }
   });
   menu.innerHTML = html;
