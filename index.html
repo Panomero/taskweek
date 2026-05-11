@@ -1079,7 +1079,7 @@ function renderProjView(main,proj) {
         ${t.note?`<div class="task-note">${esc(t.note)}</div>`:''}
       </div>
       ${t.rolledOver&&!t.done?`<span class="rolled-tag">↩</span>`:''}
-      ${(()=>{if(!t.deadline||t.done) return own?`<span class="deadline-tag none" onclick="event.stopPropagation();openDeadlinePicker('${pid}','${t.id}',this)">📅</span>`:'';const d=Math.ceil((new Date(t.deadline)-new Date().setHours(0,0,0,0))/86400000);const cls=d<0?'over':d<=2?'soon':'ok';const label=d<0?`-${-d}д`:d===0?'сегодня':d===1?'завтра':`${d}д`;return `<span class="deadline-tag ${cls}" onclick="event.stopPropagation();openDeadlinePicker('${pid}','${t.id}',this)">📅 ${label}</span>`;})()}
+      ${(()=>{if(!t.deadline||t.done) return own?`<span class="deadline-tag none" onclick="event.stopPropagation();openDeadlinePicker('${proj.id}','${t.id}',this)">📅</span>`:'';const d=Math.ceil((new Date(t.deadline)-new Date().setHours(0,0,0,0))/86400000);const cls=d<0?'over':d<=2?'soon':'ok';const label=d<0?`-${-d}д`:d===0?'сегодня':d===1?'завтра':`${d}д`;return `<span class="deadline-tag ${cls}" onclick="event.stopPropagation();openDeadlinePicker('${proj.id}','${t.id}',this)">📅 ${label}</span>`;})()}
       ${dayLabel?`<span class="day-tag" onclick="event.stopPropagation();openDayPicker('${proj.id}','${t.id}',this)">${dayLabel}</span>`:''}
       ${own?`<span class="day-tag" onclick="event.stopPropagation();openDayPicker('${proj.id}','${t.id}',this)" style="${dayLabel?'display:none':''}" title="День недели">📅</span>`:''}
       <span class="status-tag" style="background:${STATUS_C[taskStatus]}22;color:${STATUS_C[taskStatus]}" onclick="event.stopPropagation();openStatusPicker('${proj.id}','${t.id}',this)">${STATUS[taskStatus]}</span>
