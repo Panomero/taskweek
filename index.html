@@ -1063,7 +1063,8 @@ function renderProjView(main,proj) {
     if(G.filterAssignee==='none') filtered=filtered.filter(t=>!t.assigneeId);
     else filtered=filtered.filter(t=>t.assigneeId===G.filterAssignee);
   }
-  filtered.sort((a,b)=>(a.done!==b.done?a.done?1:-1:0)||((a.day||99)-(b.day||99))||(PRIO_O[a.prio]-PRIO_O[b.prio]));
+  const _dlSort=t=>t.deadline&&!t.done?Math.ceil((new Date(t.deadline)-new Date().setHours(0,0,0,0))/86400000):9999;
+  filtered.sort((a,b)=>(a.done!==b.done?a.done?1:-1:0)||(_dlSort(a)-_dlSort(b))||(PRIO_O[a.prio]-PRIO_O[b.prio]));
 
   const taskHTML=filtered.length?filtered.map(t=>{
     const m=t.assigneeId?getMember(t.assigneeId):null;
