@@ -280,6 +280,11 @@ input, select, button, textarea { font-family: var(--font); }
 .del-task:hover { color: var(--p1); }
 .task-menu-btn { background: rgba(255,255,255,0.1); border: none; cursor: pointer; color: #fff; font-size: 16px; line-height: 1; padding: 2px 8px; border-radius: 6px; }
 .task-menu-btn:hover { background: rgba(255,255,255,0.2); }
+.deadline-tag { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; white-space: nowrap; cursor: pointer; margin-right: 2px; }
+.deadline-tag.ok { background: rgba(46,204,153,0.15); color: #2ECC99; }
+.deadline-tag.soon { background: rgba(240,165,0,0.15); color: #F0A500; }
+.deadline-tag.over { background: rgba(224,92,92,0.2); color: #E05C5C; }
+.deadline-tag.none { background: transparent; color: var(--text3); }
 .task-menu { position: fixed; background: #1c1c1e; border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 6px 0; z-index: 9999; min-width: 200px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
 .task-menu-item { padding: 12px 16px; cursor: pointer; font-size: 15px; color: #fff; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,0.07); }
 .task-menu-item:hover { background: rgba(255,255,255,0.1); }
@@ -973,6 +978,7 @@ function buildSectionsHTML(pid, filtered, own) {
       <div class="check ${t.done?'checked':''} ${own?'':'dis'}" ${own?`onclick="toggleTask('${pid}','${t.id}')"`:''}></div>
       <span class="task-txt" ondblclick="if(own)event.stopPropagation(),renameTask('${pid}','${t.id}',this)">${esc(t.text)}</span>
       ${t.rolledOver&&!t.done?`<span class="rolled-tag">↩</span>`:''}
+      ${(()=>{if(!t.deadline||t.done) return own?`<span class="deadline-tag none" onclick="event.stopPropagation();openDeadlinePicker('${pid}','${t.id}',this)">📅</span>`:'';const d=Math.ceil((new Date(t.deadline)-new Date().setHours(0,0,0,0))/86400000);const cls=d<0?'over':d<=2?'soon':'ok';const label=d<0?`-${-d}д`:d===0?'сегодня':d===1?'завтра':`${d}д`;return `<span class="deadline-tag ${cls}" onclick="event.stopPropagation();openDeadlinePicker('${pid}','${t.id}',this)">📅 ${label}</span>`;})()}
       ${own?`<div class="assignee-badge" onclick="event.stopPropagation();openPicker('${pid}','${t.id}',this)">
         ${m?`<div class="assignee-av" style="background:${m.color}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span>`:`<span class="no-assignee">+ исполнитель</span>`}
       </div>`:(m?`<div class="assignee-badge"><div class="assignee-av" style="background:${m.color}">${memberInitials(m)}</div><span class="assignee-name">${esc(m.name)}</span></div>`:'')}
@@ -1070,6 +1076,7 @@ function renderProjView(main,proj) {
         ${t.note?`<div class="task-note">${esc(t.note)}</div>`:''}
       </div>
       ${t.rolledOver&&!t.done?`<span class="rolled-tag">↩</span>`:''}
+      ${(()=>{if(!t.deadline||t.done) return own?`<span class="deadline-tag none" onclick="event.stopPropagation();openDeadlinePicker('${pid}','${t.id}',this)">📅</span>`:'';const d=Math.ceil((new Date(t.deadline)-new Date().setHours(0,0,0,0))/86400000);const cls=d<0?'over':d<=2?'soon':'ok';const label=d<0?`-${-d}д`:d===0?'сегодня':d===1?'завтра':`${d}д`;return `<span class="deadline-tag ${cls}" onclick="event.stopPropagation();openDeadlinePicker('${pid}','${t.id}',this)">📅 ${label}</span>`;})()}
       ${dayLabel?`<span class="day-tag" onclick="event.stopPropagation();openDayPicker('${proj.id}','${t.id}',this)">${dayLabel}</span>`:''}
       ${own?`<span class="day-tag" onclick="event.stopPropagation();openDayPicker('${proj.id}','${t.id}',this)" style="${dayLabel?'display:none':''}" title="День недели">📅</span>`:''}
       <span class="status-tag" style="background:${STATUS_C[taskStatus]}22;color:${STATUS_C[taskStatus]}" onclick="event.stopPropagation();openStatusPicker('${proj.id}','${t.id}',this)">${STATUS[taskStatus]}</span>
@@ -1118,6 +1125,32 @@ function renderProjView(main,proj) {
 }
 
 
+function openDeadlinePicker(pid, tid, el) {
+  document.querySelectorAll('.deadline-picker').forEach(p=>p.remove());
+  const task = getTasks(pid).find(t=>t.id===tid);
+  if(!task) return;
+  const picker = document.createElement('div');
+  picker.className = 'task-menu deadline-picker';
+  const val = task.deadline ? task.deadline.slice(0,10) : '';
+  picker.innerHTML = `<div class="task-menu-section">Дедлайн</div>
+    <div style="padding:8px 12px"><input type="date" value="${val}" style="background:#2c2c2e;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;padding:6px 10px;font-size:14px;width:100%;box-sizing:border-box" onchange="setDeadline('${pid}','${tid}',this.value);document.querySelectorAll('.deadline-picker').forEach(p=>p.remove())"></div>
+    ${val?`<div class="task-menu-item" style="color:#E05C5C" onclick="setDeadline('${pid}','${tid}',null);document.querySelectorAll('.deadline-picker').forEach(p=>p.remove())">✕ Убрать дедлайн</div>`:''}`;
+  document.body.appendChild(picker);
+  const r = el.getBoundingClientRect();
+  let left = r.left;
+  if(left + 230 > window.innerWidth) left = window.innerWidth - 238;
+  if(left < 8) left = 8;
+  let top = r.bottom + 4;
+  if(top + 160 > window.innerHeight) top = r.top - 165;
+  picker.style.cssText += `;left:${left}px;top:${top}px;min-width:220px;position:fixed`;
+  setTimeout(() => document.addEventListener('click', function h(e) {
+    if(!picker.contains(e.target)){picker.remove();document.removeEventListener('click',h);}
+  }), 0);
+}
+function setDeadline(pid, tid, date) {
+  const task = getTasks(pid).find(t=>t.id===tid);
+  if(task){task.deadline=date||null;save();render();}
+}
 function openTaskMenu(pid, tid, btn) {
   document.querySelectorAll('.task-menu').forEach(m=>m.remove());
   const sects = getSections(pid);
