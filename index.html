@@ -565,7 +565,12 @@ async function load() {
       document.getElementById('app').style.display='grid';
       applyTheme(); render(); return;
     }
-  } catch(e){ console.error('load error',e); }
+  } catch(e){ 
+    console.error('load error',e);
+    document.getElementById('setupScreen').querySelector('.setup-sub').textContent = 'Ошибка: ' + e.message;
+    applyTheme();
+    return;
+  }
   document.getElementById('setupScreen').querySelector('.setup-sub').textContent = 'Настройте пользователей и команду';
   applyTheme();
 }
