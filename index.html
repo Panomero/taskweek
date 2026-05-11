@@ -1438,7 +1438,6 @@ function toggleTheme() {
   applyTheme();
 }
 function toggleFocus() { G.focus=!G.focus; save(); render(); }
-function toggleTheme() { G.theme=G.theme==='light'?'dark':'light'; applyTheme(); save(); }
 function applyTheme() {
   const localTheme = localStorage.getItem('tw_theme') || G.theme || 'dark';
   document.documentElement.setAttribute('data-theme', localTheme);
