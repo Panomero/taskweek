@@ -633,15 +633,51 @@ async function sbGet() {
 }
 
 let lastSavedHash = '';
+let lastSavedTs = 0;
 function save() {
   clearTimeout(saveT);
   saveT=setTimeout(async()=>{
     try {
+      G.updatedAt = Date.now();
       const data = JSON.stringify(G);
-      if(data === lastSavedHash) return; // no change, skip
-      lastSavedHash = data;
-      await sbSet(data);
-    } catch(e){}
+      if(data === lastSavedHash) return;
+      // Check server version before saving
+      const serverVal = await sbGet();
+      if(serverVal) {
+        const serverData = JSON.parse(serverVal);
+        if(serverData.updatedAt && serverData.updatedAt > lastSavedTs) {
+          // Server is newer - merge projects and tasks
+          const localProjects = JSON.parse(JSON.stringify(G.projects));
+          const localTasks = JSON.parse(JSON.stringify(G.tasks));
+          const localSections = JSON.parse(JSON.stringify(G.sections||{}));
+          Object.assign(G, serverData);
+          // Merge projects per user
+          G.users.forEach(u => {
+            const lp = localProjects[u.id]||[];
+            const sp = G.projects[u.id]||[];
+            const spIds = new Set(sp.map(p=>p.id));
+            lp.forEach(p=>{ if(!spIds.has(p.id)) sp.push(p); });
+            G.projects[u.id] = sp;
+            // Merge tasks
+            if(!G.tasks[u.id]) G.tasks[u.id]={};
+            const lt = localTasks[u.id]||{};
+            Object.keys(lt).forEach(pid=>{
+              if(!G.tasks[u.id][pid]) G.tasks[u.id][pid]={};
+              Object.keys(lt[pid]).forEach(wk=>{
+                if(!G.tasks[u.id][pid][wk]) G.tasks[u.id][pid][wk]=lt[pid][wk];
+                else {
+                  const existing=new Set(G.tasks[u.id][pid][wk].map(t=>t.id));
+                  lt[pid][wk].forEach(t=>{ if(!existing.has(t.id)) G.tasks[u.id][pid][wk].push(t); });
+                }
+              });
+            });
+          });
+        }
+      }
+      lastSavedTs = G.updatedAt;
+      lastSavedHash = JSON.stringify(G);
+      await sbSet(lastSavedHash);
+    } catch(e){ console.error('save error',e); }
   },1500);
 }
 
