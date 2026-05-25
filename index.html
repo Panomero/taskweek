@@ -623,6 +623,17 @@ async function sbSet(value) {
   return r.ok;
 }
 
+async function sbKeepAlive() {
+  try {
+    await fetch(`${SB_URL}/rest/v1/taskweek_data?key=eq.${SB_KEY_NAME}`, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+      body: JSON.stringify({updated_at: new Date().toISOString()})
+    });
+  } catch(e){}
+}
+setInterval(sbKeepAlive, 4*24*60*60*1000);
+
 async function sbGet() {
   const r = await fetch(`${SB_URL}/rest/v1/taskweek_data?key=eq.${SB_KEY_NAME}&select=value`, {
     headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
